@@ -133,10 +133,16 @@ Your rock develops personality based on your behavior:
 
 ## Installation & Setup
 
-1. Open in Roblox Studio
-2. Ensure `FilteringEnabled` is true
-3. Publish and run in-game
-4. Players will automatically become rocks upon joining
+1. **Create your RockPlayer model** in Roblox Studio Workspace
+   - Build or import your custom rock model
+   - Name it `RockPlayer`
+   - The system will automatically clone this model for each player
+   - If no RockPlayer exists, it will fall back to a default simple rock
+
+2. **Open in Roblox Studio**
+3. **Ensure `FilteringEnabled` is true** in default.project.json
+4. **Publish and run in-game**
+5. **Players will automatically become rocks upon joining**
 
 ## Future Features
 

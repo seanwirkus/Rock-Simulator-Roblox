@@ -57,6 +57,15 @@ local CREATURE_TYPES = {
 
 local AnimalSystem = {}
 
+-- Helper function to get position from rock (handles Models and Parts)
+local function getRockPosition(rock)
+    if rock:IsA("Model") then
+        return rock:GetBoundingBox().Position
+    else
+        return rock.Position
+    end
+end
+
 -- Create a creature that reacts to a rock
 function AnimalSystem.spawnCreature(rockPosition)
     local creatureType = CREATURE_TYPES[math.random(1, #CREATURE_TYPES)]
@@ -184,6 +193,16 @@ end
 function AnimalSystem.approachRock(creature, rockPos, caution)
     local bodyVelocity = creature:FindFirstChild("BodyVelocity")
     if not bodyVelocity then return end
+    
+    -- Get the rock position (could be Model or Part)
+    if typeof(rockPos) ~= "Vector3" then
+        -- If rockPos is a Part or Model, get its position
+        if rockPos:IsA("Model") then
+            rockPos = rockPos:GetBoundingBox().Position
+        else
+            rockPos = rockPos.Position
+        end
+    end
     
     local direction = (rockPos - creature.Position).Unit
     local speed = creature:GetAttribute("Speed") * caution

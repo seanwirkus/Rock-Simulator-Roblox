@@ -11,48 +11,30 @@ local player = Players.LocalPlayer
 local camera = Workspace.CurrentCamera
 local playerGui = player:WaitForChild("PlayerGui")
 
--- Rock simulation state
-local myRock = nil
+-- Exploration state
 local cameraConnection = nil
 local uiElements = {}
 
--- Camera settings
-local CAMERA_OFFSET = Vector3.new(0, 8, 12)
-local CAMERA_ANGLE = -15
-local CAMERA_SMOOTH_TIME = 2
-
--- Wait for player's rock to be created
-local function waitForMyRock()
-    local rockName = "PlayerRock_" .. player.Name
+-- Set up simple default camera
+local function setupRockCamera()
+    camera.CameraType = Enum.CameraType.Custom
     
-    local rock = Workspace:FindFirstChild(rockName)
-    while not rock do
-        wait(0.5)
-        rock = Workspace:FindFirstChild(rockName)
+    -- Update camera every frame to follow the rock
+    if cameraConnection then
+        cameraConnection:Disconnect()
     end
     
-    return rock
-end
-
--- Set up camera to view the rock
-local function setupRockCamera(rock)
-    camera.CameraType = Enum.CameraType.Scriptable
-    
-    local function updateCamera()
-        if rock and rock.Parent then
-            local rockPosition = rock.Position
-            local cameraPosition = rockPosition + CAMERA_OFFSET
-            
-            -- Create a smooth camera movement
-            local cframe = CFrame.lookAt(cameraPosition, rockPosition)
-            cframe = cframe * CFrame.Angles(math.rad(CAMERA_ANGLE), 0, 0)
-            
-            camera.CFrame = camera.CFrame:Lerp(cframe, 0.05)
+    cameraConnection = RunService.Heartbeat:Connect(function()
+        if player.Character then
+            local rootPart = player.Character:FindFirstChild("HumanoidRootPart")
+            if rootPart then
+                -- Position camera above and behind the rock
+                local offset = CFrame.new(0, 5, 8)
+                camera.CFrame = (rootPart.CFrame * offset):Inverse() * rootPart.CFrame
+                camera.Focus = rootPart.CFrame + Vector3.new(0, 2, 0)
+            end
         end
-    end
-    
-    -- Connect the camera update
-    cameraConnection = RunService.Heartbeat:Connect(updateCamera)
+    end)
 end
 
 -- Create the zen-like UI
@@ -185,57 +167,71 @@ end
 
 -- Update UI with current stats
 local function updateStatsUI()
-    -- Simple time tracking from when the rock was found
-    local timeExisted = tick() - (myRock and myRock:GetAttribute("SpawnTime") or tick())
-    
+    -- Simple time tracking for the session
     if uiElements.TimeExisted then
-        uiElements.TimeExisted.Text = "Time Existed: " .. formatTime(timeExisted)
-    end
-    
-    -- Other stats would be updated from server events in a full implementation
-    -- For now, we'll show some basic progression
-    if uiElements.EventsWitnessed then
-        local events = math.floor(timeExisted / 10) -- 1 event per 10 seconds for demo
-        uiElements.EventsWitnessed.Text = "Events Witnessed: " .. events
+        local sessionTime = tick() - game:GetService("Workspace").FindFirstChild and 0 or 0
+        uiElements.TimeExisted.Text = "Time Explored: " .. formatTime(sessionTime)
     end
 end
 
 -- Main initialization
 local function initialize()
-    print("Rock Simulator client starting...")
+    print("Game starting - you can now move around with jump movement!")
     
-    -- Wait for our rock to be created
-    myRock = waitForMyRock()
-    print("Found my rock:", myRock.Name)
-    
-    -- Set up camera
-    setupRockCamera(myRock)
+    -- Set up camera immediately
+    setupRockCamera()
     
     -- Create UI
     createRockUI()
     
-    -- Start stats updating
-    spawn(function()
-        while myRock and myRock.Parent do
-            updateStatsUI()
-            wait(1)
-        end
-    end)
-    
-    print("Rock simulation initialized! You are now a rock. 🪨")
+    print("Exploration mode initialized! Use WASD+SPACE to jump around! 🎮")
 end
 
--- Start immediately - rock should be created without character
+-- Start immediately
 initialize()
 
--- Camera controls (optional subtle movement)
+-- Jump movement direction tracking
+local moveDirection = Vector3.new(0, 0, 0)
+
+-- Track keyboard input for directional jumping
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
     if gameProcessed then return end
     
-    if input.KeyCode == Enum.KeyCode.R then
-        -- Reset camera position
-        if myRock then
-            setupRockCamera(myRock)
+    if input.KeyCode == Enum.KeyCode.W then
+        moveDirection = moveDirection + Vector3.new(0, 0, -1)
+    elseif input.KeyCode == Enum.KeyCode.S then
+        moveDirection = moveDirection + Vector3.new(0, 0, 1)
+    elseif input.KeyCode == Enum.KeyCode.A then
+        moveDirection = moveDirection + Vector3.new(-1, 0, 0)
+    elseif input.KeyCode == Enum.KeyCode.D then
+        moveDirection = moveDirection + Vector3.new(1, 0, 0)
+    elseif input.KeyCode == Enum.KeyCode.Space then
+        -- Small upward jump only
+        if player.Character then
+            local rootPart = player.Character:FindFirstChild("HumanoidRootPart")
+            
+            if rootPart then
+                local bodyVelocity = Instance.new("BodyVelocity")
+                bodyVelocity.Velocity = Vector3.new(0, 15, 0)
+                bodyVelocity.MaxForce = Vector3.new(0, math.huge, 0)
+                bodyVelocity.Parent = rootPart
+                
+                game:GetService("Debris"):AddItem(bodyVelocity, 0.15)
+            end
         end
+    elseif input.KeyCode == Enum.KeyCode.R then
+        setupRockCamera()
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input, gameProcessed)
+    if input.KeyCode == Enum.KeyCode.W then
+        moveDirection = moveDirection - Vector3.new(0, 0, -1)
+    elseif input.KeyCode == Enum.KeyCode.S then
+        moveDirection = moveDirection - Vector3.new(0, 0, 1)
+    elseif input.KeyCode == Enum.KeyCode.A then
+        moveDirection = moveDirection - Vector3.new(-1, 0, 0)
+    elseif input.KeyCode == Enum.KeyCode.D then
+        moveDirection = moveDirection - Vector3.new(1, 0, 0)
     end
 end)
